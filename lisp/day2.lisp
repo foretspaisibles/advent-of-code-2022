@@ -3,7 +3,8 @@
 (defpackage #:com.adventofcode/day2
   (:use #:common-lisp)
   (:export
-   #:puzzle-1))
+   #:puzzle-1
+   #:puzzle-2))
 
 (in-package #:com.adventofcode/day2)
 
