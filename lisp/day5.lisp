@@ -52,7 +52,7 @@
 	(*move-scanner* line)
       (list count source destination))))
 
-(defun perform-move (state count source destination)
+(defun perform-move-CM9000 (state count source destination)
   (dotimes (_ count)
     (setf
      (aref state (1- destination))
@@ -63,14 +63,24 @@
      (aref state (1- source))
      (nbutlast (aref state (1- source))))))
 
+(defun perform-move-CM9001 (state count source destination)
+  (setf
+   (aref state (1- destination))
+   (append
+    (aref state (1- destination))
+    (last (aref state (1- source)) count))
+   (aref state (1- source))
+   (nbutlast (aref state (1- source)) count)))
+
+
 (defun print-crates (crates)
   (format t "~&Crates: ~A" crates))
 
-(defun process-moves (stream &optional (size 9))
+(defun process-moves (stream &key (size 9) (perform-move #'perform-move-CM9000))
   (loop :with state = (read-initial-state stream size)
 	:for move = (read-move stream)
 	:while move
-	:do (apply #'perform-move state move)
+	:do (apply perform-move state move)
 	:finally (return state)))
 
 (defparameter *example-1*
@@ -86,9 +96,14 @@ move 1 from 1 to 2")
 
 (defun example-1 ()
   (with-input-from-string (stream *example-1*)
-    (process-moves stream 3)))
+    (process-moves stream :size 3)))
 
 (defun puzzle-1 ()
   (with-open-file (stream *input*)
-    (map 'string #'(lambda (crates) (car (last crates)))  (process-moves stream))))
+    (map 'string #'(lambda (crates) (car (last crates)))
+	 (process-moves stream))))
 
+(defun puzzle-2 ()
+  (with-open-file (stream *input*)
+    (map 'string #'(lambda (crates) (car (last crates)))
+	 (process-moves stream :perform-move #'perform-move-CM9001))))
