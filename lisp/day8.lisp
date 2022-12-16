@@ -1,5 +1,7 @@
 (ql:quickload '("org.melusina.confidence" "cl-ppcre"))
 
+(declaim (optimize (safety 3) (debug 3)))
+
 (defpackage #:com.adventofcode/day8
   (:use #:common-lisp)
   (:import-from
@@ -22,6 +24,22 @@
 33549
 35390")
 
+(defun tree-height (digit)
+  (declare (type character digit))
+  (the
+   (integer 0 9)
+   (ecase digit
+     (#\0 0)
+     (#\1 1)
+     (#\2 2)
+     (#\3 3)
+     (#\4 4)
+     (#\5 5)
+     (#\6 6)
+     (#\7 7)
+     (#\8 8)
+     (#\9 9))))
+
 (defun read-forest (stream)
   (let* ((lines
 	   (loop :for line = (read-line stream nil nil)
@@ -39,7 +57,7 @@
 	  :for i = 0 :then (1+ i)
 	  :do (dotimes (j column-number)
 		(setf (aref forest i j)
-		      (- (char-code (aref line j)) #.(char-code #\0)))))
+		      (tree-height (aref line j)))))
     forest))
 
 (defun count-visible-trees (forest)
@@ -102,8 +120,33 @@
       (loop :for i :from 0 :below number-of-lines
 	    :sum (loop :for j :from 0 :below number-of-columns
 		       :sum (aref visibility i j))))))
-    
-	  
+
+(defun find-highest-tree-scenic-score (forest)
+  (let ((number-of-lines
+	  (first (array-dimensions forest)))
+	(number-of-columns
+	  (second (array-dimensions forest))))
+    (labels
+	((is-in-forest-p (i j)
+	   (and (<= 0 i)
+		    (<= 0 j)
+		    (< i number-of-lines)
+		    (< j number-of-columns)))
+	 (visible-trees-in-direction (i0 j0 delta-i delta-j)
+	   (loop :with height = (aref forest i0 j0)
+		 :for i = (+ i0 delta-i) :then (+ i delta-i)
+		 :for j = (+ j0 delta-j) :then (+ j delta-j)
+		 :while (is-in-forest-p i j)
+		 :count t
+		 :while (> height (aref forest i j))))
+	 (scenic-score (i j)
+	   (* (visible-trees-in-direction i j  0  1)
+	      (visible-trees-in-direction i j  1  0)
+	      (visible-trees-in-direction i j -1  0)
+	      (visible-trees-in-direction i j  0 -1))))
+      (loop :for i :from 0 :below number-of-lines
+	    :maximize (loop :for j :from 0 :below number-of-columns
+			    :maximize (scenic-score i j))))))
 
 (defun example ()
   (with-input-from-string (stream *example*)
@@ -111,12 +154,8 @@
 
 (defun puzzle-1 ()
   (with-open-file (stream *input*)
-    (total-size-of-small-directories
-     (make-filesystem-tree stream))))
+    (count-visible-trees (read-forest stream))))
 
 (defun puzzle-2 ()
   (with-open-file (stream *input*)
-    (slot-value
-     (directory-freeing-enough-space
-      (make-filesystem-tree stream))
-     'size)))
+    (find-highest-tree-scenic-score (read-forest stream))))
